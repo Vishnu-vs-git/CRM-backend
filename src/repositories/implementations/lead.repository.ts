@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../generated/prisma/client";
+import { buildSystemFilters } from "../../services/lead-filter.service";
 import type { AuthContext } from "../../types/auth.types";
 import type { LeadQueryResult } from "../../types/lead-query.result.types";
 import type { LeadQueryInput } from "../../validators/lead-query.schema";
@@ -11,6 +12,7 @@ export class LeadRepository implements ILeadRepository {
     query: LeadQueryInput,
     auth: AuthContext,
   ): Promise<LeadQueryResult> {
+    const systemFilters = buildSystemFilters(query.filters);
     const where = {
       tenantId: auth.tenantId,
       ...(auth.role === "AGENT"
@@ -18,8 +20,14 @@ export class LeadRepository implements ILeadRepository {
             assignedTo: auth.userId,
           }
         : {}),
+      ...(systemFilters.length > 0
+        ? query.logic === "AND"
+          ? { AND: systemFilters }
+          : { OR: systemFilters }
+        : {}),
     };
-
+    console.log("systemFilters", systemFilters);
+    console.log("where", where);
     const leads = await this.prisma.lead.findMany({
       where,
       skip: (query.page - 1) * query.limit,
