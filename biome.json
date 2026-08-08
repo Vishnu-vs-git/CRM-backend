@@ -1,0 +1,13 @@
+{
+  "files": {
+    "includes": ["src/**/*.ts", "!src/generated", "!dist", "!node_modules"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true
+  }
+}
