@@ -1,14 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { HttpStatus } from "../constants/http.status";
 import { Messages } from "../constants/messages";
-import { LeadService } from "../services/lead.service";
+import type { LeadService } from "../services/lead.service";
 import type { LeadQueryInput } from "../validators/lead-query.schema";
 
 export class LeadController {
-  private readonly leadService: LeadService;
-  constructor() {
-    this.leadService = new LeadService();
-  }
+  constructor(private readonly leadService: LeadService) {}
+
   async query(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const query = req.body as LeadQueryInput;

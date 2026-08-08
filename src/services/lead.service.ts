@@ -1,16 +1,14 @@
+import type { ILeadRepository } from "../repositories/interfaces/lead.repository.interface";
 import type { AuthContext } from "../types/auth.types";
+import type { LeadQueryResult } from "../types/lead-query.result.types";
 import type { LeadQueryInput } from "../validators/lead-query.schema";
 
 export class LeadService {
-  async queryLeads(query: LeadQueryInput, auth: AuthContext) {
-    console.log("Query:", query);
-    console.log("Auth:", auth);
-
-    return {
-      data: [],
-      page: query.page,
-      limit: query.limit,
-      total: 0,
-    };
+  constructor(private readonly leadRepository: ILeadRepository) {}
+  async queryLeads(
+    query: LeadQueryInput,
+    auth: AuthContext,
+  ): Promise<LeadQueryResult> {
+    return this.leadRepository.queryLeads(query, auth);
   }
 }
