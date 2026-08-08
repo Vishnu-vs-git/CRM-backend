@@ -10,9 +10,9 @@ export interface Lead {
   tenantId: string;
   userId: string;
   name: string;
-  phone: string;
-  countryCode: string;
-  e164: string;
+  phone: string | null;
+  countryCode: string | null;
+  e164: string | null;
   email: string | null;
   assignedTo: string | null;
   followUpDate: Date | null;
