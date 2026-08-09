@@ -179,6 +179,48 @@ curl -X POST 'http://localhost:5000/api/v1/leads/query?sortBy=invalidField' \
 }
 ```
 
+### Production Curls (Live Vercel Cloud API)
+
+To query the live server directly in the cloud, substitute the local address with `https://crm-backend-theta-five.vercel.app`:
+
+* **Scenario 1: Admin Queries 'City' containing "Kochi" AND 'Budget' > 60000 (Cloud Database)**
+```bash
+curl -X POST 'https://crm-backend-theta-five.vercel.app/api/v1/leads/query?page=1&limit=20&sortBy=createdAt&sortDirection=desc' \
+  -H 'Content-Type: application/json' \
+  -H 'x-tenant-id: 747188d0-a004-4a01-bac5-6ad0d8e7f891' \
+  -H 'x-user-id: 1aef87fb-4672-4761-a828-488e03e5928b' \
+  -H 'x-user-role: admin' \
+  -d '{
+    "logic": "AND",
+    "filters": [
+      {
+        "fieldId": "d0982642-e45a-4031-8d33-b8cb683a1910",
+        "fieldType": "string",
+        "condition": "contain",
+        "value": "Kochi"
+      },
+      {
+        "fieldId": "f33e69d1-45eb-4ad3-81b7-c02da4d1a578",
+        "fieldType": "number",
+        "condition": "greater than",
+        "value": "60000"
+      }
+    ]
+  }'
+```
+
+* **Scenario 2: Agent A1 queries own leads using free text search "Priya" (Cloud Database)**
+```bash
+curl -X POST 'https://crm-backend-theta-five.vercel.app/api/v1/leads/query?page=1&limit=10' \
+  -H 'Content-Type: application/json' \
+  -H 'x-tenant-id: 747188d0-a004-4a01-bac5-6ad0d8e7f891' \
+  -H 'x-user-id: 2aef87fb-4672-4761-a828-488e03e5928e' \
+  -H 'x-user-role: agent' \
+  -d '{
+    "q": "Priya"
+  }'
+```
+
 ---
 
 ## 6. OpenAPI / Swagger Specification
