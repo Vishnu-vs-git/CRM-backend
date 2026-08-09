@@ -115,7 +115,7 @@ Use these IDs to simulate your curls and verify endpoint functionality:
 
 ### Scenario 1: Admin Queries 'City' containing "Kochi" AND 'Budget' > 60000
 ```bash
-curl -X POST 'http://localhost:3000/api/v1/leads/query?page=1&limit=20&sortBy=createdAt&sortDirection=desc' \
+curl -X POST 'http://localhost:5000/api/v1/leads/query?page=1&limit=20&sortBy=createdAt&sortDirection=desc' \
   -H 'Content-Type: application/json' \
   -H 'x-tenant-id: 747188d0-a004-4a01-bac5-6ad0d8e7f891' \
   -H 'x-user-id: 1aef87fb-4672-4761-a828-488e03e5928b' \
@@ -141,7 +141,7 @@ curl -X POST 'http://localhost:3000/api/v1/leads/query?page=1&limit=20&sortBy=cr
 
 ### Scenario 2: Agent A1 queries own leads using free text search "Priya" (Returns empty because Priya is assigned to Agent A2)
 ```bash
-curl -X POST 'http://localhost:3000/api/v1/leads/query?page=1&limit=10' \
+curl -X POST 'http://localhost:5000/api/v1/leads/query?page=1&limit=10' \
   -H 'Content-Type: application/json' \
   -H 'x-tenant-id: 747188d0-a004-4a01-bac5-6ad0d8e7f891' \
   -H 'x-user-id: 2aef87fb-4672-4761-a828-488e03e5928e' \
@@ -153,7 +153,7 @@ curl -X POST 'http://localhost:3000/api/v1/leads/query?page=1&limit=10' \
 
 ### Scenario 3: Request with invalid parameter (Triggers validation 400 error formatted to spec)
 ```bash
-curl -X POST 'http://localhost:3000/api/v1/leads/query?sortBy=invalidField' \
+curl -X POST 'http://localhost:5000/api/v1/leads/query?sortBy=invalidField' \
   -H 'Content-Type: application/json' \
   -H 'x-tenant-id: 747188d0-a004-4a01-bac5-6ad0d8e7f891' \
   -H 'x-user-id: 1aef87fb-4672-4761-a828-488e03e5928b' \
