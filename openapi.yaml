@@ -1,0 +1,265 @@
+openapi: 3.0.3
+info:
+  title: Lead Filter Query API
+  description: Flexible query API for multi-tenant lead searching, filtering (EAV), sorting, and role-based access.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+security:
+  - TenantHeader: []
+    UserHeader: []
+    RoleHeader: []
+paths:
+  /leads/query:
+    post:
+      summary: Query and filter leads
+      operationId: queryLeads
+      description: Returns a paginated list of leads for the calling tenant, optionally filtered by free-text search and system/custom filters.
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sortBy
+          in: query
+          description: Field to sort results by
+          required: false
+          schema:
+            type: string
+            enum: [createdAt, followUpDate]
+            default: createdAt
+        - name: sortDirection
+          in: query
+          description: Direction to sort results (ascending or descending)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: x-tenant-id
+          in: header
+          description: Tenant UUID to scope results
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: x-user-id
+          in: header
+          description: UUID of the requesting user
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: x-user-role
+          in: header
+          description: Role of the requesting user
+          required: true
+          schema:
+            type: string
+            enum: [owner, admin, manager, agent, OWNER, ADMIN, MANAGER, AGENT]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryLeadsBody'
+      responses:
+        '200':
+          description: Leads retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request parameters or body filters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    QueryLeadsBody:
+      type: object
+      properties:
+        q:
+          type: string
+          description: Free-text search term matched against name, phone, email, and e164
+          example: ram
+        logic:
+          type: string
+          enum: [AND, OR]
+          default: AND
+          description: Logical operator to combine filters
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeadFilter'
+    LeadFilter:
+      type: object
+      required:
+        - fieldId
+        - fieldType
+        - condition
+      properties:
+        fieldId:
+          type: string
+          description: System column name (e.g. name, followUpDate, assignedTo) or Custom Field UUID
+          example: name
+        fieldType:
+          type: string
+          enum: [string, number, date, boolean]
+          example: string
+        condition:
+          type: string
+          enum:
+            - is
+            - is not
+            - contain
+            - does not contain
+            - starts with
+            - ends with
+            - before
+            - after
+            - greater than
+            - less than
+            - is empty
+            - is not empty
+          example: contain
+        value:
+          type: string
+          description: Value to match against. Required for all conditions except 'is empty' and 'is not empty'.
+          example: Chennai
+        inputType:
+          type: string
+          enum: [text, select, multiselect]
+          example: text
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Leads fetched successfully
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 20
+            totalRecords:
+              type: integer
+              example: 42
+            totalPages:
+              type: integer
+              example: 3
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+          nullable: true
+        e164:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        assignedTo:
+          type: string
+          format: uuid
+          nullable: true
+        followUpDate:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        customFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeadCustomField'
+    LeadCustomField:
+      type: object
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+        label:
+          type: string
+          example: City
+        value:
+          type: string
+          example: Chennai
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: sortBy must be "followUpDate" or "createdAt"
+        statusCode:
+          type: integer
+          example: 400
+  securitySchemes:
+    TenantHeader:
+      type: apiKey
+      in: header
+      name: x-tenant-id
+    UserHeader:
+      type: apiKey
+      in: header
+      name: x-user-id
+    RoleHeader:
+      type: apiKey
+      in: header
+      name: x-user-role
