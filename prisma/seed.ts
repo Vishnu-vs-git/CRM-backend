@@ -205,7 +205,7 @@ async function main() {
 			status: "ACTIVE",
 		},
 	});
-
+  console.log("City field ID:", cityField.id);
 	const budgetField = await prisma.customField.upsert({
 		where: {
 			tenantId_label: {
@@ -278,6 +278,13 @@ async function main() {
 			status: "ACTIVE",
 		},
 	});
+	console.log({
+  city: cityField.id,
+  budget: budgetField.id,
+  interested: interestedField.id,
+  followUp: followUpField.id,
+  products: productsField.id,
+});
 
 	console.log("Custom fields created.");
 	const ram = await prisma.lead.upsert({

@@ -1,5 +1,8 @@
 import type { PrismaClient } from "../../generated/prisma/client";
-import { buildSystemFilters } from "../../services/lead-filter.service";
+import {
+  buildCustomFilters,
+  buildSystemFilters,
+} from "../../services/lead-filter.service";
 import type { AuthContext } from "../../types/auth.types";
 import type { LeadQueryResult } from "../../types/lead-query.result.types";
 import type { LeadQueryInput } from "../../validators/lead-query.schema";
@@ -13,6 +16,8 @@ export class LeadRepository implements ILeadRepository {
     auth: AuthContext,
   ): Promise<LeadQueryResult> {
     const systemFilters = buildSystemFilters(query.filters);
+    const customFilters = buildCustomFilters(query.filters);
+    const filterConditions = [...systemFilters, ...customFilters];
     const where = {
       tenantId: auth.tenantId,
       ...(auth.role === "AGENT"
@@ -20,14 +25,47 @@ export class LeadRepository implements ILeadRepository {
             assignedTo: auth.userId,
           }
         : {}),
-      ...(systemFilters.length > 0
+      ...(filterConditions.length > 0
         ? query.logic === "AND"
-          ? { AND: systemFilters }
-          : { OR: systemFilters }
+          ? { AND: filterConditions }
+          : { OR: filterConditions }
         : {}),
     };
     console.log("systemFilters", systemFilters);
+    console.log("customFilters", customFilters);
     console.log("where", where);
+
+    const arun = await this.prisma.lead.findUnique({
+      where: {
+        id: "33333333-3333-4333-8333-333333333333",
+      },
+      select: {
+        id: true,
+        name: true,
+        assignedTo: true,
+        tenantId: true,
+      },
+    });
+
+    console.log("ARUN:", arun);
+    const allLeads = await this.prisma.lead.findMany({
+      where: {
+        tenantId: auth.tenantId,
+      },
+      select: {
+        id: true,
+        name: true,
+        tenantId: true,
+        customValues: {
+          select: {
+            fieldId: true,
+            value: true,
+          },
+        },
+      },
+    });
+
+    // console.log("TENANT LEADS", JSON.stringify(allLeads, null, 2));
     const leads = await this.prisma.lead.findMany({
       where,
       skip: (query.page - 1) * query.limit,

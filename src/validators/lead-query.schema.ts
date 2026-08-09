@@ -1,23 +1,30 @@
 import { z } from "zod";
 
-const operatorSchema = z.enum([
-  "eq",
-  "neq",
-  "contains",
-  "startsWith",
-  "gt",
-  "gte",
-  "lt",
-  "lte",
+const filterConditionSchema = z.enum([
+  "is",
+  "is not",
+  "contain",
+  "starts with",
+  "before",
+  "after",
+  "is empty",
+  "is not empty",
+  "greater than",
+  "less than",
 ]);
 
+const filterFieldTypeSchema = z.enum(["string", "number", "date", "boolean"]);
+
 const filterSchema = z.object({
-  field: z.string().min(1),
-  operator: operatorSchema,
-  value: z.unknown(),
+  fieldId: z.string().min(1),
+  fieldType: filterFieldTypeSchema,
+  condition: filterConditionSchema,
+  value: z.string().optional(),
+  inputType: z.enum(["text", "select", "multiselect"]).optional(),
 });
+
 const sortSchema = z.object({
-  field: z.string().min(1),
+  field: z.enum(["createdAt", "followUpDate"]),
   direction: z.enum(["asc", "desc"]),
 });
 

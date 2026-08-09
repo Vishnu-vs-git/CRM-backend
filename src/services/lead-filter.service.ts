@@ -1,7 +1,15 @@
 import { BadRequestError } from "../errors/app.error";
 import type { LeadQueryInput } from "../validators/lead-query.schema";
 
-const SYSTEM_FIELDS = ["name", "email", "assignedTo", "followUpDate"] as const;
+const SYSTEM_FIELDS = [
+  "name",
+  "phone",
+  "email",
+  "assignedTo",
+  "followUpDate",
+  "createdAt",
+  "updatedAt",
+] as const;
 
 type SystemField = (typeof SYSTEM_FIELDS)[number];
 
@@ -9,130 +17,166 @@ export function buildSystemFilters(filters: LeadQueryInput["filters"]) {
   const conditions = [];
 
   for (const filter of filters) {
-    if (!SYSTEM_FIELDS.includes(filter.field as SystemField)) {
+    if (!SYSTEM_FIELDS.includes(filter.fieldId as SystemField)) {
       continue;
     }
 
-    switch (filter.field) {
-      case "name":
-        conditions.push(buildStringCondition("name", filter));
+    switch (filter.fieldType) {
+      case "string":
+        conditions.push(buildStringCondition(filter));
         break;
 
-      case "email":
-        conditions.push(buildStringCondition("email", filter));
+      case "date":
+        conditions.push(buildDateCondition(filter));
         break;
 
-      case "assignedTo":
-        conditions.push(buildStringCondition("assignedTo", filter));
+      default:
+        throw new BadRequestError(
+          `Unsupported field type '${filter.fieldType}' for system field '${filter.fieldId}'`,
+        );
+    }
+  }
+
+  return conditions;
+}
+export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
+  const conditions = [];
+
+  for (const filter of filters) {
+    if (SYSTEM_FIELDS.includes(filter.fieldId as SystemField)) {
+      continue;
+    }
+
+    if (filter.fieldType !== "string") {
+      continue;
+    }
+
+    if (!filter.value) {
+      throw new BadRequestError(
+        `Value is required for custom field '${filter.fieldId}'`,
+      );
+    }
+
+    switch (filter.condition) {
+      case "contain":
+        conditions.push({
+          customValues: {
+            some: {
+              fieldId: filter.fieldId,
+              value: {
+                contains: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
         break;
 
-      case "followUpDate":
-        conditions.push(buildDateCondition("followUpDate", filter));
+      case "is":
+        conditions.push({
+          customValues: {
+            some: {
+              fieldId: filter.fieldId,
+              value: {
+                equals: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
         break;
+
+      default:
+        throw new BadRequestError(
+          `Condition '${filter.condition}' is not supported for custom string fields`,
+        );
     }
   }
 
   return conditions;
 }
 
-function buildStringCondition(
-  field: string,
-  filter: LeadQueryInput["filters"][number],
-) {
-  switch (filter.operator) {
-    case "eq":
+function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
+  switch (filter.condition) {
+    case "is":
       return {
-        [field]: {
-          equals: filter.value as string,
+        [filter.fieldId]: {
+          equals: filter.value,
         },
       };
 
-    case "neq":
+    case "is not":
       return {
-        [field]: {
-          not: filter.value as string,
+        [filter.fieldId]: {
+          not: filter.value,
         },
       };
 
-    case "contains":
+    case "contain":
       return {
-        [field]: {
-          contains: filter.value as string,
+        [filter.fieldId]: {
+          contains: filter.value,
           mode: "insensitive" as const,
         },
       };
 
-    case "startsWith":
+    case "starts with":
       return {
-        [field]: {
-          startsWith: filter.value as string,
+        [filter.fieldId]: {
+          startsWith: filter.value,
           mode: "insensitive" as const,
         },
       };
 
     default:
       throw new BadRequestError(
-        `Operator ${filter.operator} is not supported for ${field}`,
+        `Condition '${filter.condition}' is not supported for string field '${filter.fieldId}'`,
       );
   }
 }
-
-function buildDateCondition(
-  field: string,
-  filter: LeadQueryInput["filters"][number],
-) {
-  const date = new Date(filter.value as string);
-
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestError("Invalid followUpDate");
+function buildDateCondition(filter: LeadQueryInput["filters"][number]) {
+  if (!filter.value) {
+    throw new BadRequestError(`Value is required for ${filter.condition}`);
   }
 
-  switch (filter.operator) {
-    case "eq":
+  const date = new Date(filter.value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestError(`Invalid date value for '${filter.fieldId}'`);
+  }
+
+  switch (filter.condition) {
+    case "is":
       return {
-        [field]: {
+        [filter.fieldId]: {
           equals: date,
         },
       };
 
-    case "neq":
+    case "is not":
       return {
-        [field]: {
+        [filter.fieldId]: {
           not: date,
         },
       };
 
-    case "gt":
+    case "before":
       return {
-        [field]: {
-          gt: date,
-        },
-      };
-
-    case "gte":
-      return {
-        [field]: {
-          gte: date,
-        },
-      };
-
-    case "lt":
-      return {
-        [field]: {
+        [filter.fieldId]: {
           lt: date,
         },
       };
 
-    case "lte":
+    case "after":
       return {
-        [field]: {
-          lte: date,
+        [filter.fieldId]: {
+          gt: date,
         },
       };
 
     default:
       throw new BadRequestError(
-        `Operator ${filter.operator} is not supported for ${field}`,
+        `Condition '${filter.condition}' is not supported for date field '${filter.fieldId}'`,
       );
   }
 }
