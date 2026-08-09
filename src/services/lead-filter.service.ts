@@ -198,6 +198,13 @@ export function getNumberFilters(filters: LeadQueryInput["filters"]) {
       filter.fieldType === "number",
   );
 }
+export function getBooleanFilters(filters: LeadQueryInput["filters"]) {
+  return filters.filter(
+    (filter) =>
+      !SYSTEM_FIELDS.includes(filter.fieldId as SystemField) &&
+      filter.fieldType === "boolean",
+  );
+}
 
 export function getDateFilters(filters: LeadQueryInput["filters"]) {
   return filters.filter(

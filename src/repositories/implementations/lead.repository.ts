@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import {
   buildCustomFilters,
   buildSystemFilters,
+  getBooleanFilters,
   getDateFilters,
   getNumberFilters,
 } from "../../services/lead-filter.service";
@@ -208,11 +209,66 @@ export class LeadRepository implements ILeadRepository {
       });
     }
 
+    const booleanFilters = getBooleanFilters(query.filters);
+    const booleanFilterConditions = [];
+
+    for (const filter of booleanFilters) {
+      if (filter.value === undefined) {
+        throw new BadRequestError(
+          `Value is required for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      if (filter.value !== "true" && filter.value !== "false") {
+        throw new BadRequestError(
+          `Invalid boolean value for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      const booleanValue = filter.value === "true";
+
+      let matchingRows: { leadId: string }[];
+
+      switch (filter.condition) {
+        case "is":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" IN ('true', 'false')
+          AND "value"::boolean = ${booleanValue}
+      `;
+          break;
+
+        case "is not":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" IN ('true', 'false')
+          AND "value"::boolean != ${booleanValue}
+      `;
+          break;
+
+        default:
+          throw new BadRequestError(
+            `Condition '${filter.condition}' is not supported for boolean field '${filter.fieldId}'`,
+          );
+      }
+
+      booleanFilterConditions.push({
+        id: {
+          in: matchingRows.map((row) => row.leadId),
+        },
+      });
+    }
+
     const filterConditions = [
       ...systemFilters,
       ...customFilters,
       ...numberFilterConditions,
       ...dateFilterConditions,
+      ...booleanFilterConditions,
     ];
 
     const where = {
