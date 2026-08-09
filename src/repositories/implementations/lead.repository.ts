@@ -271,13 +271,48 @@ export class LeadRepository implements ILeadRepository {
       ...booleanFilterConditions,
     ];
 
+    const searchCondition = query.q
+      ? {
+          OR: [
+            {
+              name: {
+                contains: query.q,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              phone: {
+                contains: query.q,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              email: {
+                contains: query.q,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              e164: {
+                contains: query.q,
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
+      : {};
+
     const where = {
       tenantId: auth.tenantId,
+
       ...(auth.role === "AGENT"
         ? {
             assignedTo: auth.userId,
           }
         : {}),
+
+      ...(query.q ? searchCondition : {}),
+
       ...(filterConditions.length > 0
         ? query.logic === "AND"
           ? { AND: filterConditions }
@@ -293,7 +328,21 @@ export class LeadRepository implements ILeadRepository {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
       orderBy: {
-        createdAt: "desc",
+        [query.sort?.field ?? "createdAt"]: query.sort?.direction ?? "desc",
+      },
+      include: {
+        customValues: {
+          select: {
+            fieldId: true,
+            value: true,
+            field: {
+              select: {
+                label: true,
+                type: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -302,10 +351,19 @@ export class LeadRepository implements ILeadRepository {
     });
 
     return {
-      leads: leads.map((lead) => ({
-        ...lead,
-        customFields: [],
-      })),
+      leads: leads.map((lead) => {
+        const { customValues, ...leadData } = lead;
+
+        return {
+          ...leadData,
+          customFields: customValues.map((customValue) => ({
+            fieldId: customValue.fieldId,
+            label: customValue.field.label,
+            type: customValue.field.type,
+            value: customValue.value,
+          })),
+        };
+      }),
       total,
       page: query.page,
       limit: query.limit,
