@@ -7,6 +7,8 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
+  - url: https://crm-backend-theta-five.vercel.app/api/v1
+    description: Live production server (Vercel)
   - url: http://localhost:5000/api/v1
     description: Local development server
 security:

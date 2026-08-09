@@ -4,6 +4,17 @@ This is a standalone Express + TypeScript + Postgres microservice for querying a
 
 ---
 
+## Live Deployment
+
+The API is deployed and hosted live in the cloud on Vercel:
+* **Base Endpoint:** `https://crm-backend-theta-five.vercel.app/api/v1`
+* **Query URL:** `POST https://crm-backend-theta-five.vercel.app/api/v1/leads/query`
+* **Cloud Database:** Backed by a serverless Postgres instance on Neon.
+
+*Note: You can direct your curls and Postman requests directly to the live URL above using the standard request headers and body schemas to test the API immediately without any local setup.*
+
+---
+
 ## 1. Getting Started
 
 ### Prerequisites
