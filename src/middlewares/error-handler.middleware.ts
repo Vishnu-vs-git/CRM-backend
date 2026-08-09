@@ -11,23 +11,25 @@ export const errorHandler = (
   _next: NextFunction,
 ) => {
   if (error instanceof ZodError) {
+    const message = error.issues
+      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      .join(", ");
     return res.status(HttpStatus.BAD_REQUEST).json({
-      success: false,
-      message: Messages.VALIDATION.FAILED,
-      errors: error.issues,
+      message,
+      statusCode: HttpStatus.BAD_REQUEST,
     });
   }
   if (error instanceof AppError) {
     return res.status(error.statusCode).json({
-      success: false,
       message: error.message,
+      statusCode: error.statusCode,
     });
   }
 
   console.error(error);
 
   return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-    success: false,
     message: Messages.SERVER.INTERNAL_ERROR,
+    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
   });
 };

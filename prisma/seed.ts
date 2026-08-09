@@ -12,6 +12,13 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+	console.log("Cleaning up database...");
+	await prisma.leadCustomFieldValue.deleteMany();
+	await prisma.lead.deleteMany();
+	await prisma.customField.deleteMany();
+	await prisma.user.deleteMany();
+	await prisma.tenant.deleteMany();
+
 	console.log("Starting database seed...");
 	const tenantA = await prisma.tenant.upsert({
 		where: {
@@ -45,12 +52,10 @@ async function main() {
 	});
 	const alice = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantA.id,
-				email: "alice@acme.test",
-			},
+			id: "1aef87fb-4672-4761-a828-488e03e5928a",
 		},
 		create: {
+			id: "1aef87fb-4672-4761-a828-488e03e5928a",
 			tenantId: tenantA.id,
 			name: "Alice",
 			email: "alice@acme.test",
@@ -58,7 +63,9 @@ async function main() {
 			role: "OWNER",
 		},
 		update: {
+			tenantId: tenantA.id,
 			name: "Alice",
+			email: "alice@acme.test",
 			phone: "+919900000001",
 			role: "OWNER",
 		},
@@ -66,12 +73,10 @@ async function main() {
 
 	const bob = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantA.id,
-				email: "bob@acme.test",
-			},
+			id: "1aef87fb-4672-4761-a828-488e03e5928b",
 		},
 		create: {
+			id: "1aef87fb-4672-4761-a828-488e03e5928b",
 			tenantId: tenantA.id,
 			name: "Bob",
 			email: "bob@acme.test",
@@ -79,19 +84,19 @@ async function main() {
 			role: "ADMIN",
 		},
 		update: {
+			tenantId: tenantA.id,
 			name: "Bob",
+			email: "bob@acme.test",
 			phone: "+919900000002",
 			role: "ADMIN",
 		},
 	});
 	const carol = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantA.id,
-				email: "carol@acme.test",
-			},
+			id: "1aef87fb-4672-4761-a828-488e03e5928c",
 		},
 		create: {
+			id: "1aef87fb-4672-4761-a828-488e03e5928c",
 			tenantId: tenantA.id,
 			name: "Carol",
 			email: "carol@acme.test",
@@ -99,7 +104,9 @@ async function main() {
 			role: "MANAGER",
 		},
 		update: {
+			tenantId: tenantA.id,
 			name: "Carol",
+			email: "carol@acme.test",
 			phone: "+919900000003",
 			role: "MANAGER",
 		},
@@ -107,12 +114,10 @@ async function main() {
 
 	const rahul = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantA.id,
-				email: "rahul@acme.test",
-			},
+			id: "2aef87fb-4672-4761-a828-488e03e5928e",
 		},
 		create: {
+			id: "2aef87fb-4672-4761-a828-488e03e5928e",
 			tenantId: tenantA.id,
 			name: "Rahul",
 			email: "rahul@acme.test",
@@ -120,19 +125,19 @@ async function main() {
 			role: "AGENT",
 		},
 		update: {
+			tenantId: tenantA.id,
 			name: "Rahul",
+			email: "rahul@acme.test",
 			phone: "+919900000004",
 			role: "AGENT",
 		},
 	});
 	const anil = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantA.id,
-				email: "anil@acme.test",
-			},
+			id: "2aef87fb-4672-4761-a828-488e03e5928f",
 		},
 		create: {
+			id: "2aef87fb-4672-4761-a828-488e03e5928f",
 			tenantId: tenantA.id,
 			name: "Anil",
 			email: "anil@acme.test",
@@ -140,19 +145,19 @@ async function main() {
 			role: "AGENT",
 		},
 		update: {
+			tenantId: tenantA.id,
 			name: "Anil",
+			email: "anil@acme.test",
 			phone: "+919900000005",
 			role: "AGENT",
 		},
 	});
 	const david = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantB.id,
-				email: "david@beta.test",
-			},
+			id: "3aef87fb-4672-4761-a828-488e03e5928a",
 		},
 		create: {
+			id: "3aef87fb-4672-4761-a828-488e03e5928a",
 			tenantId: tenantB.id,
 			name: "David",
 			email: "david@beta.test",
@@ -160,19 +165,19 @@ async function main() {
 			role: "OWNER",
 		},
 		update: {
+			tenantId: tenantB.id,
 			name: "David",
+			email: "david@beta.test",
 			phone: "+919900000006",
 			role: "OWNER",
 		},
 	});
 	const john = await prisma.user.upsert({
 		where: {
-			tenantId_email: {
-				tenantId: tenantB.id,
-				email: "john@beta.test",
-			},
+			id: "3aef87fb-4672-4761-a828-488e03e5928b",
 		},
 		create: {
+			id: "3aef87fb-4672-4761-a828-488e03e5928b",
 			tenantId: tenantB.id,
 			name: "John",
 			email: "john@beta.test",
@@ -180,7 +185,9 @@ async function main() {
 			role: "AGENT",
 		},
 		update: {
+			tenantId: tenantB.id,
 			name: "John",
+			email: "john@beta.test",
 			phone: "+919900000007",
 			role: "AGENT",
 		},
@@ -189,91 +196,91 @@ async function main() {
 	console.log("Users created.");
 	const cityField = await prisma.customField.upsert({
 		where: {
-			tenantId_label: {
-				tenantId: tenantA.id,
-				label: "City",
-			},
+			id: "d0982642-e45a-4031-8d33-b8cb683a1910",
 		},
 		create: {
+			id: "d0982642-e45a-4031-8d33-b8cb683a1910",
 			tenantId: tenantA.id,
 			label: "City",
 			type: "STRING",
 			status: "ACTIVE",
 		},
 		update: {
+			tenantId: tenantA.id,
+			label: "City",
 			type: "STRING",
 			status: "ACTIVE",
 		},
 	});
-  console.log("City field ID:", cityField.id);
+	console.log("City field ID:", cityField.id);
 	const budgetField = await prisma.customField.upsert({
 		where: {
-			tenantId_label: {
-				tenantId: tenantA.id,
-				label: "Budget",
-			},
+			id: "f33e69d1-45eb-4ad3-81b7-c02da4d1a578",
 		},
 		create: {
+			id: "f33e69d1-45eb-4ad3-81b7-c02da4d1a578",
 			tenantId: tenantA.id,
 			label: "Budget",
 			type: "NUMBER",
 			status: "ACTIVE",
 		},
 		update: {
+			tenantId: tenantA.id,
+			label: "Budget",
 			type: "NUMBER",
 			status: "ACTIVE",
 		},
 	});
 	const interestedField = await prisma.customField.upsert({
 		where: {
-			tenantId_label: {
-				tenantId: tenantA.id,
-				label: "Interested",
-			},
+			id: "7b4d0472-b7f4-4c6f-a5ac-8d31ff63e298",
 		},
 		create: {
+			id: "7b4d0472-b7f4-4c6f-a5ac-8d31ff63e298",
 			tenantId: tenantA.id,
 			label: "Interested",
 			type: "BOOLEAN",
 			status: "ACTIVE",
 		},
 		update: {
+			tenantId: tenantA.id,
+			label: "Interested",
 			type: "BOOLEAN",
 			status: "ACTIVE",
 		},
 	});
 	const followUpField = await prisma.customField.upsert({
 		where: {
-			tenantId_label: {
-				tenantId: tenantA.id,
-				label: "Follow Up",
-			},
+			id: "34501a86-9792-4aad-a660-9810590f8d74",
 		},
 		create: {
+			id: "34501a86-9792-4aad-a660-9810590f8d74",
 			tenantId: tenantA.id,
 			label: "Follow Up",
 			type: "DATE",
 			status: "ACTIVE",
 		},
 		update: {
+			tenantId: tenantA.id,
+			label: "Follow Up",
 			type: "DATE",
 			status: "ACTIVE",
 		},
 	});
 	const productsField = await prisma.customField.upsert({
 		where: {
-			tenantId_label: {
-				tenantId: tenantA.id,
-				label: "Products",
-			},
+			id: "25d7924c-b604-4079-a61d-0fdb89806f41",
 		},
 		create: {
+			id: "25d7924c-b604-4079-a61d-0fdb89806f41",
 			tenantId: tenantA.id,
 			label: "Products",
 			type: "MULTISELECT",
 			status: "ACTIVE",
 		},
 		update: {
+			tenantId: tenantA.id,
+			label: "Products",
 			type: "MULTISELECT",
 			status: "ACTIVE",
 		},
@@ -431,6 +438,64 @@ async function main() {
 			followUpDate: new Date("2026-08-18"),
 		},
 	});
+
+  const betaLead1 = await prisma.lead.upsert({
+  where: {
+    id: "66666666-6666-4666-8666-666666666666",
+  },
+  create: {
+    id: "66666666-6666-4666-8666-666666666666",
+    tenantId: tenantB.id,
+    userId: john.id,
+    name: "Beta Customer One",
+    phone: "9876543290",
+    countryCode: "+91",
+    e164: "+919876543290",
+    email: "beta1@example.com",
+    assignedTo: john.id,
+    followUpDate: new Date("2026-08-20"),
+  },
+  update: {
+    tenantId: tenantB.id,
+    userId: john.id,
+    name: "Beta Customer One",
+    phone: "9876543290",
+    countryCode: "+91",
+    e164: "+919876543290",
+    email: "beta1@example.com",
+    assignedTo: john.id,
+    followUpDate: new Date("2026-08-20"),
+  },
+});
+
+const betaLead2 = await prisma.lead.upsert({
+  where: {
+    id: "77777777-7777-4777-8777-777777777777",
+  },
+  create: {
+    id: "77777777-7777-4777-8777-777777777777",
+    tenantId: tenantB.id,
+    userId: john.id,
+    name: "Beta Customer Two",
+    phone: "9876543291",
+    countryCode: "+91",
+    e164: "+919876543291",
+    email: "beta2@example.com",
+    assignedTo: null,
+    followUpDate: null,
+  },
+  update: {
+    tenantId: tenantB.id,
+    userId: john.id,
+    name: "Beta Customer Two",
+    phone: "9876543291",
+    countryCode: "+91",
+    e164: "+919876543291",
+    email: "beta2@example.com",
+    assignedTo: null,
+    followUpDate: null,
+  },
+});
 
 	console.log("Leads created.");
 

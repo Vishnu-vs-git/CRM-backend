@@ -10,6 +10,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"dev": "tsx watch src/app.ts",
+		"seed": "tsx prisma/seed.ts",
 		"prepare": "husky",
 		"lint": "biome check .",
 		"check": "biome check --write .",

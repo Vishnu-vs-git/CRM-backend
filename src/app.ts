@@ -4,6 +4,8 @@ import { prisma } from "./config/prisma";
 import { errorHandler } from "./middlewares/error-handler.middleware";
 import leadRoutes from "./routes/lead.routes";
 
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT;
 app.use(express.json());

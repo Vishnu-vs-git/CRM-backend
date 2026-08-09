@@ -16,18 +16,14 @@ const filterConditionSchema = z.enum([
 ]);
 
 const filterFieldTypeSchema = z.enum(["string", "number", "date", "boolean"]);
-
+const sortBySchema = z.enum(["createdAt", "followUpDate"]);
+const sortDirectionSchema = z.enum(["asc", "desc"]);
 const filterSchema = z.object({
   fieldId: z.string().min(1),
   fieldType: filterFieldTypeSchema,
   condition: filterConditionSchema,
   value: z.string().optional(),
   inputType: z.enum(["text", "select", "multiselect"]).optional(),
-});
-
-const sortSchema = z.object({
-  field: z.enum(["createdAt", "followUpDate"]),
-  direction: z.enum(["asc", "desc"]),
 });
 
 export const leadQuerySchema = z.object({
@@ -37,11 +33,13 @@ export const leadQuerySchema = z.object({
 
   q: z.string().trim().optional(),
 
-  page: z.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().default(1),
 
-  limit: z.number().int().positive().max(100).default(10),
+  limit: z.coerce.number().int().positive().max(100).default(20),
 
-  sort: sortSchema.optional(),
+  sortBy: sortBySchema.default("createdAt"),
+
+  sortDirection: sortDirectionSchema.default("desc"),
 });
 
 export type LeadQueryInput = z.infer<typeof leadQuerySchema>;

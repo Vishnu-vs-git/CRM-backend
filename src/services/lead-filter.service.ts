@@ -1,7 +1,7 @@
 import { BadRequestError } from "../errors/app.error";
 import type { LeadQueryInput } from "../validators/lead-query.schema";
 
-const SYSTEM_FIELDS = [
+export const SYSTEM_FIELDS = [
   "name",
   "phone",
   "email",
@@ -9,15 +9,26 @@ const SYSTEM_FIELDS = [
   "followUpDate",
   "createdAt",
   "updatedAt",
+  "createdBy",
 ] as const;
 
-type SystemField = (typeof SYSTEM_FIELDS)[number];
+export type SystemField = (typeof SYSTEM_FIELDS)[number];
 
 export function buildSystemFilters(filters: LeadQueryInput["filters"]) {
   const conditions = [];
 
   for (const filter of filters) {
     if (!SYSTEM_FIELDS.includes(filter.fieldId as SystemField)) {
+      continue;
+    }
+
+    if (filter.fieldId === "createdBy") {
+      conditions.push(buildCreatedByCondition(filter));
+      continue;
+    }
+
+    if (filter.fieldId === "assignedTo") {
+      conditions.push(buildAssignedToCondition(filter));
       continue;
     }
 
@@ -180,7 +191,6 @@ export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
           },
         });
         break;
-
       default:
         throw new BadRequestError(
           `Condition '${filter.condition}' is not supported for custom string fields`,
@@ -214,6 +224,36 @@ export function getDateFilters(filters: LeadQueryInput["filters"]) {
   );
 }
 function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
+  switch (filter.condition) {
+    case "is empty":
+      return {
+        OR: [
+          {
+            [filter.fieldId]: null,
+          },
+          {
+            [filter.fieldId]: "",
+          },
+        ],
+      };
+
+    case "is not empty":
+      return {
+        AND: [
+          {
+            [filter.fieldId]: {
+              not: null,
+            },
+          },
+          {
+            [filter.fieldId]: {
+              not: "",
+            },
+          },
+        ],
+      };
+  }
+
   if (filter.value === undefined) {
     throw new BadRequestError(
       `Value is required for system field '${filter.fieldId}'`,
@@ -230,9 +270,19 @@ function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
 
     case "is not":
       return {
-        [filter.fieldId]: {
-          not: filter.value,
-        },
+        OR: [
+          {
+            [filter.fieldId]: null,
+          },
+          {
+            NOT: {
+              [filter.fieldId]: {
+                equals: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        ],
       };
 
     case "contain":
@@ -248,6 +298,24 @@ function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
         [filter.fieldId]: {
           startsWith: filter.value,
           mode: "insensitive" as const,
+        },
+      };
+
+    case "ends with":
+      return {
+        [filter.fieldId]: {
+          endsWith: filter.value,
+          mode: "insensitive" as const,
+        },
+      };
+
+    case "does not contain":
+      return {
+        NOT: {
+          [filter.fieldId]: {
+            contains: filter.value,
+            mode: "insensitive" as const,
+          },
         },
       };
 
@@ -300,6 +368,133 @@ function buildDateCondition(filter: LeadQueryInput["filters"][number]) {
     default:
       throw new BadRequestError(
         `Condition '${filter.condition}' is not supported for date field '${filter.fieldId}'`,
+      );
+  }
+}
+function buildCreatedByCondition(filter: LeadQueryInput["filters"][number]) {
+  if (filter.fieldType !== "string") {
+    throw new BadRequestError(`createdBy must use string field type`);
+  }
+
+  if (filter.condition === "is empty" || filter.condition === "is not empty") {
+    throw new BadRequestError(
+      `Condition '${filter.condition}' is not supported for createdBy`,
+    );
+  }
+
+  if (filter.value === undefined) {
+    throw new BadRequestError(`Value is required for system field 'createdBy'`);
+  }
+
+  const values = filter.value
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (values.length === 0) {
+    throw new BadRequestError(`Value is required for system field 'createdBy'`);
+  }
+
+  switch (filter.condition) {
+    case "is":
+    case "contain":
+      return {
+        userId: {
+          in: values,
+        },
+      };
+
+    case "is not":
+    case "does not contain":
+      return {
+        userId: {
+          notIn: values,
+        },
+      };
+
+    default:
+      throw new BadRequestError(
+        `Condition '${filter.condition}' is not supported for createdBy`,
+      );
+  }
+}
+
+function buildAssignedToCondition(filter: LeadQueryInput["filters"][number]) {
+  switch (filter.condition) {
+    case "is":
+    case "contain": {
+      if (filter.value === undefined) {
+        throw new BadRequestError(
+          `Value is required for system field 'assignedTo'`,
+        );
+      }
+
+      const values = filter.value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      if (values.length === 0) {
+        throw new BadRequestError(
+          `Value is required for system field 'assignedTo'`,
+        );
+      }
+
+      return {
+        assignedTo: {
+          in: values,
+        },
+      };
+    }
+
+    case "is not":
+    case "does not contain": {
+      if (filter.value === undefined) {
+        throw new BadRequestError(
+          `Value is required for system field 'assignedTo'`,
+        );
+      }
+
+      const values = filter.value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      if (values.length === 0) {
+        throw new BadRequestError(
+          `Value is required for system field 'assignedTo'`,
+        );
+      }
+
+      return {
+        OR: [
+          {
+            assignedTo: null,
+          },
+          {
+            assignedTo: {
+              notIn: values,
+            },
+          },
+        ],
+      };
+    }
+
+    case "is empty":
+      return {
+        assignedTo: null,
+      };
+
+    case "is not empty":
+      return {
+        assignedTo: {
+          not: null,
+        },
+      };
+
+    default:
+      throw new BadRequestError(
+        `Condition '${filter.condition}' is not supported for assignedTo`,
       );
   }
 }

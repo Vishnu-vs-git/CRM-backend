@@ -14,9 +14,15 @@ export class LeadController {
       const result = await this.leadService.queryLeads(query, req.auth);
 
       res.status(HttpStatus.OK).json({
-        success: true,
+        status: "success",
         message: Messages.LEAD.FETCH_SUCCESS,
-        data: result,
+        data: result.leads,
+        meta: {
+          page: result.page,
+          limit: result.limit,
+          totalRecords: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
       });
     } catch (error) {
       next(error);

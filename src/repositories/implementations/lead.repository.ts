@@ -6,8 +6,10 @@ import {
   getBooleanFilters,
   getDateFilters,
   getNumberFilters,
+  SYSTEM_FIELDS,
 } from "../../services/lead-filter.service";
 import type { AuthContext } from "../../types/auth.types";
+import type { FieldIdResult } from "../../types/fieldId-result.type";
 import type { LeadQueryResult } from "../../types/lead-query.result.types";
 import type { LeadQueryInput } from "../../validators/lead-query.schema";
 import type { ILeadRepository } from "../interfaces/lead.repository.interface";
@@ -19,6 +21,27 @@ export class LeadRepository implements ILeadRepository {
     query: LeadQueryInput,
     auth: AuthContext,
   ): Promise<LeadQueryResult> {
+    const fieldIds = [
+      ...new Set(query.filters.map((filter) => filter.fieldId)),
+    ];
+    const customFieldIds = fieldIds.filter(
+      (id) => !SYSTEM_FIELDS.includes(id as any),
+    );
+
+    if (customFieldIds.length > 0) {
+      const fields = await this.findByIds(customFieldIds, auth.tenantId);
+
+      const existingFieldIds = new Set(fields.map((field) => field.id));
+
+      const invalidFieldId = customFieldIds.find(
+        (id) => !existingFieldIds.has(id),
+      );
+
+      if (invalidFieldId) {
+        throw new BadRequestError(`Invalid fieldId: ${invalidFieldId}`);
+      }
+    }
+
     const systemFilters = buildSystemFilters(query.filters);
     const customFilters = buildCustomFilters(query.filters);
 
@@ -41,56 +64,11 @@ export class LeadRepository implements ILeadRepository {
         );
       }
 
-      let matchingRows: { leadId: string }[];
-
-      switch (filter.condition) {
-        case "is":
-          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
-        SELECT "leadId"
-        FROM "lead_custom_field_values"
-        WHERE "fieldId" = ${filter.fieldId}::uuid
-          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
-          AND "value"::numeric = ${numericValue}
-      `;
-          break;
-
-        case "is not":
-          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
-        SELECT "leadId"
-        FROM "lead_custom_field_values"
-        WHERE "fieldId" = ${filter.fieldId}::uuid
-          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
-          AND "value"::numeric != ${numericValue}
-      `;
-          break;
-
-        case "greater than":
-          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
-        SELECT "leadId"
-        FROM "lead_custom_field_values"
-        WHERE "fieldId" = ${filter.fieldId}::uuid
-          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
-          AND "value"::numeric > ${numericValue}
-      `;
-          break;
-
-        case "less than":
-          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
-        SELECT "leadId"
-        FROM "lead_custom_field_values"
-        WHERE "fieldId" = ${filter.fieldId}::uuid
-          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
-          AND "value"::numeric < ${numericValue}
-      `;
-          break;
-
-        default:
-          throw new BadRequestError(
-            `Condition '${filter.condition}' is not supported for number field '${filter.fieldId}'`,
-          );
-      }
-
-      const matchingLeadIds = matchingRows.map((row) => row.leadId);
+      const matchingLeadIds = await this.findNumberFilterLeadIds(
+        filter.fieldId,
+        filter.condition,
+        numericValue,
+      );
 
       numberFilterConditions.push({
         id: {
@@ -319,16 +297,16 @@ export class LeadRepository implements ILeadRepository {
           : { OR: filterConditions }
         : {}),
     };
-    console.log("systemFilters", systemFilters);
-    console.log("customFilters", customFilters);
-    console.log("where", where);
 
     const leads = await this.prisma.lead.findMany({
       where,
       skip: (query.page - 1) * query.limit,
       take: query.limit,
       orderBy: {
-        [query.sort?.field ?? "createdAt"]: query.sort?.direction ?? "desc",
+        [query.sortBy]:
+          query.sortBy === "followUpDate"
+            ? { sort: query.sortDirection, nulls: "last" }
+            : query.sortDirection,
       },
       include: {
         customValues: {
@@ -368,5 +346,83 @@ export class LeadRepository implements ILeadRepository {
       page: query.page,
       limit: query.limit,
     };
+  }
+
+  async findByIds(
+    fieldIds: string[],
+    tenantId: string,
+  ): Promise<FieldIdResult[]> {
+    return this.prisma.customField.findMany({
+      where: {
+        tenantId,
+        status: "ACTIVE",
+        id: {
+          in: fieldIds,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+  private async findNumberFilterLeadIds(
+    fieldId: string,
+    condition: string,
+    value: number,
+  ): Promise<string[]> {
+    switch (condition) {
+      case "is": {
+        const rows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric = ${value}
+      `;
+
+        return rows.map((row) => row.leadId);
+      }
+
+      case "is not": {
+        const rows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric != ${value}
+      `;
+
+        return rows.map((row) => row.leadId);
+      }
+
+      case "greater than": {
+        const rows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric > ${value}
+      `;
+
+        return rows.map((row) => row.leadId);
+      }
+
+      case "less than": {
+        const rows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric < ${value}
+      `;
+
+        return rows.map((row) => row.leadId);
+      }
+
+      default:
+        throw new BadRequestError(
+          `Condition '${condition}' is not supported for number field '${fieldId}'`,
+        );
+    }
   }
 }

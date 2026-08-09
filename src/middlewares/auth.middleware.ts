@@ -11,16 +11,17 @@ export const authMiddleware = (
   try {
     const tenantId = req.header("x-tenant-id");
     const userId = req.header("x-user-id");
-    const role = req.header("x-user-role");
+    const rawRole = req.header("x-user-role");
 
-    if (!tenantId || !userId || !role) {
-      const error = next(new UnauthenticatedError(Messages.AUTH.UNAUTHORIZED));
-      next(error);
+    if (!tenantId || !userId || !rawRole) {
+      next(new UnauthenticatedError(Messages.AUTH.UNAUTHORIZED));
+
       return;
     }
+    const role = rawRole.toUpperCase() as UserRole;
     const allowedRoles = ["OWNER", "ADMIN", "MANAGER", "AGENT"] as const;
 
-    if (!allowedRoles.includes(role as UserRole)) {
+    if (!allowedRoles.includes(role)) {
       next(new UnauthenticatedError(Messages.AUTH.UNAUTHORIZED));
       return;
     }
@@ -28,7 +29,7 @@ export const authMiddleware = (
     const authContext: AuthContext = {
       tenantId,
       userId,
-      role: role as UserRole,
+      role,
     };
 
     req.auth = authContext;
