@@ -199,6 +199,13 @@ export function getNumberFilters(filters: LeadQueryInput["filters"]) {
   );
 }
 
+export function getDateFilters(filters: LeadQueryInput["filters"]) {
+  return filters.filter(
+    (filter) =>
+      !SYSTEM_FIELDS.includes(filter.fieldId as SystemField) &&
+      filter.fieldType === "date",
+  );
+}
 function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
   if (filter.value === undefined) {
     throw new BadRequestError(

@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import {
   buildCustomFilters,
   buildSystemFilters,
+  getDateFilters,
   getNumberFilters,
 } from "../../services/lead-filter.service";
 import type { AuthContext } from "../../types/auth.types";
@@ -97,10 +98,121 @@ export class LeadRepository implements ILeadRepository {
       });
     }
 
+    const dateFilters = getDateFilters(query.filters);
+    const dateFilterConditions = [];
+
+    for (const filter of dateFilters) {
+      if (filter.condition === "is empty") {
+        const matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+      SELECT "leadId"
+      FROM "lead_custom_field_values"
+      WHERE "fieldId" = ${filter.fieldId}::uuid
+    `;
+
+        const idsWithValue = matchingRows.map((row) => row.leadId);
+
+        dateFilterConditions.push({
+          id: {
+            notIn: idsWithValue,
+          },
+        });
+
+        continue;
+      }
+
+      if (filter.condition === "is not empty") {
+        const matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+      SELECT "leadId"
+      FROM "lead_custom_field_values"
+      WHERE "fieldId" = ${filter.fieldId}::uuid
+    `;
+
+        const idsWithValue = matchingRows.map((row) => row.leadId);
+
+        dateFilterConditions.push({
+          id: {
+            in: idsWithValue,
+          },
+        });
+
+        continue;
+      }
+
+      if (filter.value === undefined) {
+        throw new BadRequestError(
+          `Value is required for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      const dateValue = new Date(filter.value);
+
+      if (Number.isNaN(dateValue.getTime())) {
+        throw new BadRequestError(
+          `Invalid date value for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      let matchingRows: { leadId: string }[];
+
+      switch (filter.condition) {
+        case "is":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND "value"::date = ${dateValue}
+      `;
+          break;
+
+        case "is not":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND "value"::date != ${dateValue}
+      `;
+          break;
+
+        case "before":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND "value"::date < ${dateValue}
+      `;
+          break;
+
+        case "after":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND "value"::date > ${dateValue}
+      `;
+          break;
+
+        default:
+          throw new BadRequestError(
+            `Condition '${filter.condition}' is not supported for date field '${filter.fieldId}'`,
+          );
+      }
+
+      dateFilterConditions.push({
+        id: {
+          in: matchingRows.map((row) => row.leadId),
+        },
+      });
+    }
+
     const filterConditions = [
       ...systemFilters,
       ...customFilters,
       ...numberFilterConditions,
+      ...dateFilterConditions,
     ];
 
     const where = {
