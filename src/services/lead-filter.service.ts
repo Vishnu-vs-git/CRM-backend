@@ -14,6 +14,13 @@ export const SYSTEM_FIELDS = [
 
 export type SystemField = (typeof SYSTEM_FIELDS)[number];
 
+/**
+ * Builds Prisma dynamic condition blocks for system fields.
+ * Filters out any non-system custom fields and delegates sub-builders based on data type.
+ *
+ * @param filters Array of LeadFilter inputs from the request body.
+ * @returns An array of Prisma search clauses for system fields.
+ */
 export function buildSystemFilters(filters: LeadQueryInput["filters"]) {
   const conditions = [];
 
@@ -50,6 +57,13 @@ export function buildSystemFilters(filters: LeadQueryInput["filters"]) {
 
   return conditions;
 }
+/**
+ * Builds Prisma dynamic relation condition blocks for custom string fields stored via EAV.
+ * Filters out system columns and non-string types, compiling conditions into `some` / `none` relation checks.
+ *
+ * @param filters Array of LeadFilter inputs from the request body.
+ * @returns An array of Prisma search clauses for custom EAV string fields.
+ */
 export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
   const conditions = [];
 

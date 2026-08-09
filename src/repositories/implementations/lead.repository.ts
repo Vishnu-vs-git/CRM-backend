@@ -17,6 +17,15 @@ import type { ILeadRepository } from "../interfaces/lead.repository.interface";
 export class LeadRepository implements ILeadRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  /**
+   * Queries, filters, and paginates leads for the authenticated tenant.
+   * Combines system column filters, custom EAV attributes filters, and free-text search.
+   * Applies role-based visibility scoping and eager-loads relationship values (prevents N+1).
+   *
+   * @param query Validated query input parameters and filters.
+   * @param auth Authenticated user context containing tenant and role boundaries.
+   * @returns A promise resolving to the hydrated lead results and pagination metadata.
+   */
   async queryLeads(
     query: LeadQueryInput,
     auth: AuthContext,
@@ -384,6 +393,14 @@ export class LeadRepository implements ILeadRepository {
     };
   }
 
+  /**
+   * Validates existence and active status of custom fields within a specific tenant.
+   * Prevents cross-tenant injection of metadata fields during filtering.
+   *
+   * @param fieldIds Array of custom field UUIDs to validate.
+   * @param tenantId UUID of the calling tenant.
+   * @returns List of matching active custom field IDs.
+   */
   async findByIds(
     fieldIds: string[],
     tenantId: string,
@@ -401,6 +418,15 @@ export class LeadRepository implements ILeadRepository {
       },
     });
   }
+  /**
+   * Helper that executes parameterized SQL checks with type-casting safety for custom numbers.
+   * Performs regex checks on the text column first to prevent PostgreSQL engine cast failures on mixed EAV values.
+   *
+   * @param fieldId Custom field UUID.
+   * @param condition Filter matching condition (is, is not, greater than, less than).
+   * @param value Parsed numeric target value.
+   * @returns Array of lead UUIDs matching the condition.
+   */
   private async findNumberFilterLeadIds(
     fieldId: string,
     condition: string,

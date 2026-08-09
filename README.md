@@ -73,6 +73,10 @@ Hydrating custom field values is done by combining Prisma's eager-loading `inclu
   * Header-based identity verification is used as simulated auth instead of JWT/OAuth session tokens.
   * Custom field validation checks for ID existence but skips full type validation of custom values during payload insertion (assumes correct types are sent).
 
+### 6. Architectural Pattern (Layered Architecture + Repository Pattern)
+* **Layered Separation:** Decoupled the codebase into a clean **3-Tier structure** consisting of the API controllers (HTTP input/output and schema parsing), service layer (pure logic mapping filters), and the data access layer.
+* **Repository Pattern:** Extracted database operations into a generic repository pattern (`ILeadRepository` and `LeadRepository`). This isolates the ORM (Prisma) from the rest of the application, simplifies test mocking, and ensures database queries remain easily swap-able.
+
 ---
 
 ## 3. Recommended Production Indexes
