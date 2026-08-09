@@ -22,7 +22,7 @@ This is a standalone Express + TypeScript + Postgres microservice for querying a
    ```
 3. Set up environment variables. Create a `.env` file in the root of the `backend/` directory:
    ```env
-   PORT=3000
+   PORT=5000
    DATABASE_URL="postgresql://username:password@localhost:5432/crm_database?schema=public"
    ```
 
@@ -52,8 +52,8 @@ This is a standalone Express + TypeScript + Postgres microservice for querying a
 ## 2. Design Decisions & Tradeoffs
 
 ### 1. ORM Choice (Prisma)
-We chose **Prisma** for schema definition, typescript generation, and database interactions. Prisma provides excellent type safety and automatically handles relation queries.
-* **Tradeoff:** Prisma's query generator can sometimes produce complex SQL for deeply nested relationships. To counter this, we implemented raw SQL queries (`$queryRaw`) for number, date, and boolean custom field calculations, ensuring index usage and optimal performance.
+I chose **Prisma** for schema definition, typescript generation, and database interactions. Prisma provides excellent type safety and automatically handles relation queries.
+* **Tradeoff:** Prisma's query generator can sometimes produce complex SQL for deeply nested relationships. To counter this, I implemented raw SQL queries (`$queryRaw`) for number, date, and boolean custom field calculations, ensuring index usage and optimal performance.
 
 ### 2. Multi-Tenant Scoping & Security
 * Tenant scoping is strictly enforced at the database repository query layer (`tenantId: auth.tenantId`).
@@ -77,7 +77,7 @@ Hydrating custom field values is done by combining Prisma's eager-loading `inclu
 
 ## 3. Recommended Production Indexes
 
-To maintain performance under heavy filtering, we recommend adding the following Postgres indexes:
+To maintain performance under heavy filtering, I recommend adding the following Postgres indexes:
 
 ```sql
 -- Speed up tenant separation and sorting
@@ -166,14 +166,21 @@ curl -X POST 'http://localhost:3000/api/v1/leads/query?sortBy=invalidField' \
 
 ---
 
-## 6. Project Retrospective
+## 6. OpenAPI / Swagger Specification
+
+The API contract is fully documented using the OpenAPI 3.0 standard.
+* The specification file is available at [openapi.yaml](openapi.yaml).
+* You can copy and paste the contents of `openapi.yaml` into the online [Swagger Editor](https://editor.swagger.io) to view interactive API documentation, payload descriptions, and test HTTP request structures.
+
+---
+
+## 7. Project Retrospective
 
 ### Time Spent
-* **Total Time:** ~5 Hours (Database setup, core filter service logic, custom EAV query execution, test suite verification, casing normalizations, and documentation).
+* **Total Time:** ~5.5 Hours (Database setup, core filter service logic, custom EAV query execution, test suite verification, casing normalizations, OpenAPI definition, and documentation).
 
 ### What I Would Improve With Another Day
 1. **Cursor-Based Pagination:** Replace offset-based pagination (`skip` & `take`) with cursor-based pagination to ensure fast querying on databases with millions of leads.
-2. **OpenAPI / Swagger Specs:** Auto-generate Swagger UI documentation using OpenAPI annotations.
-3. **Lead Hydration Optimization (id-then-hydrate):** Select matching lead IDs first via the filters/sorts, then perform a single `$in` query to fetch full rows to optimize memory consumption.
-4. **Comprehensive Integration Testing:** Implement endpoint integration testing with `supertest` to test routes, middlewares, error boundaries, and payloads end-to-end.
+2. **Interactive UI Hosting:** Set up `swagger-ui-express` inside the server to serve the API docs dynamically at `/docs`.
+3. **Comprehensive Integration Testing:** Implement endpoint integration testing with `supertest` to test routes, middlewares, error boundaries, and payloads end-to-end.
 

@@ -18,6 +18,7 @@ describe("buildSystemFilters", () => {
       {
         name: {
           equals: "Ram Kumar",
+          mode: "insensitive",
         },
       },
     ]);

@@ -265,10 +265,21 @@ function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
       return {
         [filter.fieldId]: {
           equals: filter.value,
+          mode: "insensitive" as const,
         },
       };
 
     case "is not":
+      if (filter.fieldId === "name") {
+        return {
+          NOT: {
+            name: {
+              equals: filter.value,
+              mode: "insensitive" as const,
+            },
+          },
+        };
+      }
       return {
         OR: [
           {
@@ -310,13 +321,30 @@ function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
       };
 
     case "does not contain":
-      return {
-        NOT: {
-          [filter.fieldId]: {
-            contains: filter.value,
-            mode: "insensitive" as const,
+      if (filter.fieldId === "name") {
+        return {
+          NOT: {
+            name: {
+              contains: filter.value,
+              mode: "insensitive" as const,
+            },
           },
-        },
+        };
+      }
+      return {
+        OR: [
+          {
+            [filter.fieldId]: null,
+          },
+          {
+            NOT: {
+              [filter.fieldId]: {
+                contains: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        ],
       };
 
     default:
@@ -326,6 +354,20 @@ function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
   }
 }
 function buildDateCondition(filter: LeadQueryInput["filters"][number]) {
+  if (filter.condition === "is empty") {
+    return {
+      [filter.fieldId]: null,
+    };
+  }
+
+  if (filter.condition === "is not empty") {
+    return {
+      [filter.fieldId]: {
+        not: null,
+      },
+    };
+  }
+
   if (!filter.value) {
     throw new BadRequestError(`Value is required for ${filter.condition}`);
   }

@@ -25,7 +25,7 @@ export class LeadRepository implements ILeadRepository {
       ...new Set(query.filters.map((filter) => filter.fieldId)),
     ];
     const customFieldIds = fieldIds.filter(
-      (id) => !SYSTEM_FIELDS.includes(id as any),
+      (id) => !(SYSTEM_FIELDS as readonly string[]).includes(id),
     );
 
     if (customFieldIds.length > 0) {
@@ -50,6 +50,42 @@ export class LeadRepository implements ILeadRepository {
     const numberFilterConditions = [];
 
     for (const filter of numberFilters) {
+      if (filter.condition === "is empty") {
+        const matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+          SELECT "leadId"
+          FROM "lead_custom_field_values"
+          WHERE "fieldId" = ${filter.fieldId}::uuid
+        `;
+
+        const idsWithValue = matchingRows.map((row) => row.leadId);
+
+        numberFilterConditions.push({
+          id: {
+            notIn: idsWithValue,
+          },
+        });
+
+        continue;
+      }
+
+      if (filter.condition === "is not empty") {
+        const matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+          SELECT "leadId"
+          FROM "lead_custom_field_values"
+          WHERE "fieldId" = ${filter.fieldId}::uuid
+        `;
+
+        const idsWithValue = matchingRows.map((row) => row.leadId);
+
+        numberFilterConditions.push({
+          id: {
+            in: idsWithValue,
+          },
+        });
+
+        continue;
+      }
+
       if (filter.value === undefined) {
         throw new BadRequestError(
           `Value is required for custom field '${filter.fieldId}'`,
