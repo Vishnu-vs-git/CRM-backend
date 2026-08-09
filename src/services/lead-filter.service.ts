@@ -51,14 +51,13 @@ export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
       continue;
     }
 
-    if (!filter.value) {
-      throw new BadRequestError(
-        `Value is required for custom field '${filter.fieldId}'`,
-      );
-    }
-
     switch (filter.condition) {
       case "contain":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
         conditions.push({
           customValues: {
             some: {
@@ -73,6 +72,11 @@ export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
         break;
 
       case "is":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
         conditions.push({
           customValues: {
             some: {
@@ -81,6 +85,97 @@ export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
                 equals: filter.value,
                 mode: "insensitive" as const,
               },
+            },
+          },
+        });
+        break;
+
+      case "is not":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
+        conditions.push({
+          customValues: {
+            none: {
+              fieldId: filter.fieldId,
+              value: {
+                equals: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
+        break;
+      case "does not contain":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
+        conditions.push({
+          customValues: {
+            none: {
+              fieldId: filter.fieldId,
+              value: {
+                contains: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
+        break;
+      case "starts with":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
+        conditions.push({
+          customValues: {
+            some: {
+              fieldId: filter.fieldId,
+              value: {
+                startsWith: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
+        break;
+      case "ends with":
+        if (filter.value === undefined) {
+          throw new BadRequestError(
+            `Value is required for custom field '${filter.fieldId}'`,
+          );
+        }
+        conditions.push({
+          customValues: {
+            some: {
+              fieldId: filter.fieldId,
+              value: {
+                endsWith: filter.value,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        });
+        break;
+      case "is empty":
+        conditions.push({
+          customValues: {
+            none: {
+              fieldId: filter.fieldId,
+            },
+          },
+        });
+        break;
+      case "is not empty":
+        conditions.push({
+          customValues: {
+            some: {
+              fieldId: filter.fieldId,
             },
           },
         });
@@ -96,7 +191,21 @@ export function buildCustomFilters(filters: LeadQueryInput["filters"]) {
   return conditions;
 }
 
+export function getNumberFilters(filters: LeadQueryInput["filters"]) {
+  return filters.filter(
+    (filter) =>
+      !SYSTEM_FIELDS.includes(filter.fieldId as SystemField) &&
+      filter.fieldType === "number",
+  );
+}
+
 function buildStringCondition(filter: LeadQueryInput["filters"][number]) {
+  if (filter.value === undefined) {
+    throw new BadRequestError(
+      `Value is required for system field '${filter.fieldId}'`,
+    );
+  }
+
   switch (filter.condition) {
     case "is":
       return {

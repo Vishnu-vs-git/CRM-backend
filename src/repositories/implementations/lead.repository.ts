@@ -1,7 +1,9 @@
+import { BadRequestError } from "../../errors/app.error";
 import type { PrismaClient } from "../../generated/prisma/client";
 import {
   buildCustomFilters,
   buildSystemFilters,
+  getNumberFilters,
 } from "../../services/lead-filter.service";
 import type { AuthContext } from "../../types/auth.types";
 import type { LeadQueryResult } from "../../types/lead-query.result.types";
@@ -17,7 +19,90 @@ export class LeadRepository implements ILeadRepository {
   ): Promise<LeadQueryResult> {
     const systemFilters = buildSystemFilters(query.filters);
     const customFilters = buildCustomFilters(query.filters);
-    const filterConditions = [...systemFilters, ...customFilters];
+
+    const numberFilters = getNumberFilters(query.filters);
+
+    const numberFilterConditions = [];
+
+    for (const filter of numberFilters) {
+      if (filter.value === undefined) {
+        throw new BadRequestError(
+          `Value is required for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      const numericValue = Number(filter.value);
+
+      if (Number.isNaN(numericValue)) {
+        throw new BadRequestError(
+          `Invalid number value for custom field '${filter.fieldId}'`,
+        );
+      }
+
+      let matchingRows: { leadId: string }[];
+
+      switch (filter.condition) {
+        case "is":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric = ${numericValue}
+      `;
+          break;
+
+        case "is not":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric != ${numericValue}
+      `;
+          break;
+
+        case "greater than":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric > ${numericValue}
+      `;
+          break;
+
+        case "less than":
+          matchingRows = await this.prisma.$queryRaw<{ leadId: string }[]>`
+        SELECT "leadId"
+        FROM "lead_custom_field_values"
+        WHERE "fieldId" = ${filter.fieldId}::uuid
+          AND "value" ~ '^-?[0-9]+(\\.[0-9]+)?$'
+          AND "value"::numeric < ${numericValue}
+      `;
+          break;
+
+        default:
+          throw new BadRequestError(
+            `Condition '${filter.condition}' is not supported for number field '${filter.fieldId}'`,
+          );
+      }
+
+      const matchingLeadIds = matchingRows.map((row) => row.leadId);
+
+      numberFilterConditions.push({
+        id: {
+          in: matchingLeadIds,
+        },
+      });
+    }
+
+    const filterConditions = [
+      ...systemFilters,
+      ...customFilters,
+      ...numberFilterConditions,
+    ];
+
     const where = {
       tenantId: auth.tenantId,
       ...(auth.role === "AGENT"
@@ -35,37 +120,6 @@ export class LeadRepository implements ILeadRepository {
     console.log("customFilters", customFilters);
     console.log("where", where);
 
-    const arun = await this.prisma.lead.findUnique({
-      where: {
-        id: "33333333-3333-4333-8333-333333333333",
-      },
-      select: {
-        id: true,
-        name: true,
-        assignedTo: true,
-        tenantId: true,
-      },
-    });
-
-    console.log("ARUN:", arun);
-    const allLeads = await this.prisma.lead.findMany({
-      where: {
-        tenantId: auth.tenantId,
-      },
-      select: {
-        id: true,
-        name: true,
-        tenantId: true,
-        customValues: {
-          select: {
-            fieldId: true,
-            value: true,
-          },
-        },
-      },
-    });
-
-    // console.log("TENANT LEADS", JSON.stringify(allLeads, null, 2));
     const leads = await this.prisma.lead.findMany({
       where,
       skip: (query.page - 1) * query.limit,

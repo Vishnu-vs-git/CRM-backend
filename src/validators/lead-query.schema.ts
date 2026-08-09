@@ -5,6 +5,8 @@ const filterConditionSchema = z.enum([
   "is not",
   "contain",
   "starts with",
+  "does not contain",
+  "ends with",
   "before",
   "after",
   "is empty",
